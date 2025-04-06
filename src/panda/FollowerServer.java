@@ -12,12 +12,11 @@ public class FollowerServer extends Server{
     private BooksDatabase booksDB;
 
     public FollowerServer(String region, int port) {
-        System.out.println("Follower server started in region " + region + " on port " + port);
         this.booksDB = new BooksDatabase();
-        initialize("INIT;FOLLOWER;"+region.toUpperCase()+";"+port+";");
         
         try(ServerSocket serverSocket = new ServerSocket(port)){
-            System.out.println("Follower server started on port " + port);
+            initialize("INIT;FOLLOWER;"+region.toUpperCase()+";"+port+";");
+            System.out.println("Follower server started in region " + region + " on port " + port);
             while(true){
                 Socket socket = serverSocket.accept();
                 System.out.println("Connection made");
@@ -48,7 +47,6 @@ public class FollowerServer extends Server{
                     }
                     this.leaderPort = Integer.parseInt(st.nextToken());
                     response = "INIT_OK;";
-                    System.out.println("Leader found at port" + leaderPort);
                     break;
                 case "HEARTBEART":
                     response = "HEARTBEAT_OK;";

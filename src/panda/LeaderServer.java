@@ -16,9 +16,9 @@ public class LeaderServer extends Server{
     public LeaderServer() {
         booksDB = new BooksDatabase();
         leaderPort = 8081;
-        initialize("INIT;LEADER;CENTER;8081;");
-
+        
         try(ServerSocket serverSocket = new ServerSocket(leaderPort)){            
+            initialize("INIT;LEADER;CENTER;8081;");
             System.out.println("Leader server started on port " + leaderPort);
             while(true){
                 Socket socket = serverSocket.accept();
@@ -118,7 +118,6 @@ public class LeaderServer extends Server{
     @Override
     void initialize(String initMessage) {
         super.initialize(initMessage);
-        System.out.println("Leader server started");
         followersPorts = new Vector<Integer>();
     }
 

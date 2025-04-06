@@ -24,7 +24,7 @@
             "request": "launch",
             "mainClass": "FollowerReadsPattern/panda.FollowerServer",
             "projectName": "FollowerReadsServer_39c4202c",
-            "args": "norte 8083"
+            "args": "norte 8082"
         },
         {
             "type": "java",

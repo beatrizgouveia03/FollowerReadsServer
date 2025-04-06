@@ -11,11 +11,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class HandleRequest implements Runnable {
     private Socket socket;
-    private int leaderPort;
+    private Integer leaderPort;
     private CopyOnWriteArrayList<Integer> serverPorts;
     private HashMap<Integer, String> followerRegions;
 
-    public HandleRequest(Socket socket, int leaderPort, CopyOnWriteArrayList<Integer> serverPorts, HashMap<Integer, String> followerRegions) {
+    public HandleRequest(Socket socket, Integer leaderPort, CopyOnWriteArrayList<Integer> serverPorts, HashMap<Integer, String> followerRegions) {
         this.socket = socket;
         this.leaderPort = leaderPort;
         this.serverPorts = serverPorts;        
@@ -39,7 +39,7 @@ public class HandleRequest implements Runnable {
                 int port = Integer.parseInt(st.nextToken());
                 addServer(type, region, port);
 
-                if(type.equals("LEADER")){
+                if(type.equals("LEADER") && serverPorts.size() > 0){
                     for(int server : serverPorts){
                         forwardRequest("INIT;LEADER;"+port, server);
                     }
