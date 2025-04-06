@@ -16,7 +16,7 @@ public class LeaderServer extends Server{
     public LeaderServer() {
         booksDB = new BooksDatabase();
         leaderPort = 8081;
-        initialize("INIT;LEADER;8081;");
+        initialize("INIT;LEADER;CENTER;8081;");
 
         try(ServerSocket serverSocket = new ServerSocket(leaderPort)){            
             System.out.println("Leader server started on port " + leaderPort);

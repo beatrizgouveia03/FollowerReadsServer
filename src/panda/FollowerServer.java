@@ -40,6 +40,16 @@ public class FollowerServer extends Server{
             String OP = st.nextToken();
             String response = null;
             switch(OP){
+                case "INIT":
+                    String type = st.nextToken();
+                    if (!type.equals("LEADER")) {
+                        response = "ERROR;Invalid type";
+                        break;
+                    }
+                    this.leaderPort = Integer.parseInt(st.nextToken());
+                    response = "INIT_OK;";
+                    System.out.println("Leader found at port" + leaderPort);
+                    break;
                 case "HEARTBEART":
                     response = "HEARTBEAT_OK;";
                     break;

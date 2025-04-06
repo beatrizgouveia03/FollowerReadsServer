@@ -38,6 +38,14 @@ public class HandleRequest implements Runnable {
                 String region = st.nextToken();
                 int port = Integer.parseInt(st.nextToken());
                 addServer(type, region, port);
+
+                if(type.equals("LEADER")){
+                    for(int server : serverPorts){
+                        forwardRequest("INIT;LEADER;"+port, server);
+                    }
+                } else if(type.equals("FOLLOWER")){
+                    forwardRequest("INIT;FOLLOWER;"+port, leaderPort);
+                }
                 response = "INIT_OK;";
             } else if(OP.equals("ADD_BOOK")){
                 response = forwardRequest(request, leaderPort);
