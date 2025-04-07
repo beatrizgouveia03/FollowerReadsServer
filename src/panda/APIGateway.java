@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class APIGateway extends Server{
@@ -16,6 +17,7 @@ public class APIGateway extends Server{
         System.out.println("API Gateway Started");
         serverPorts = new CopyOnWriteArrayList<>();
         followerRegions = new java.util.HashMap<>();
+        leaderPort = new AtomicInteger();
 
         try ( ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
             ServerSocket server = new ServerSocket(gatewayPort, MAX_CONNECTIONS)){			

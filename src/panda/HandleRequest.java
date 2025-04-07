@@ -8,14 +8,15 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class HandleRequest implements Runnable {
     private Socket socket;
-    private Integer leaderPort;
+    private AtomicInteger leaderPort;
     private CopyOnWriteArrayList<Integer> serverPorts;
     private HashMap<Integer, String> followerRegions;
 
-    public HandleRequest(Socket socket, Integer leaderPort, CopyOnWriteArrayList<Integer> serverPorts, HashMap<Integer, String> followerRegions) {
+    public HandleRequest(Socket socket, AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> serverPorts, HashMap<Integer, String> followerRegions) {
         this.socket = socket;
         this.leaderPort = leaderPort;
         this.serverPorts = serverPorts;        
@@ -44,11 +45,11 @@ public class HandleRequest implements Runnable {
                         forwardRequest("INIT;LEADER;"+port, server);
                     }
                 } else if(type.equals("FOLLOWER")){
-                    forwardRequest("INIT;FOLLOWER;"+port, leaderPort);
+                    forwardRequest("INIT;FOLLOWER;"+port, leaderPort.get());
                 }
                 response = "INIT_OK;";
             } else if(OP.equals("ADD_BOOK")){
-                response = forwardRequest(request, leaderPort);
+                response = forwardRequest(request, leaderPort.get());
             } else if(OP.equals("READ_BOOK")){                
                 response = forwardRequest(request, serverPorts.get(0));
             } else {
@@ -72,8 +73,8 @@ public class HandleRequest implements Runnable {
             followerRegions.put(port, region);
             System.out.println("Follower server added in region " + region + " on port " + port);
         } else if(type.equals("LEADER")){
-            leaderPort = port;
-            System.out.println("Leader server added on port " + port);
+            leaderPort.set(port);
+            System.out.println("Leader server added on port " + leaderPort);
         } else {
             System.out.println("Unknown server type");
         }

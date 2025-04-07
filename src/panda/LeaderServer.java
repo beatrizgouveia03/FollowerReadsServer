@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.StringTokenizer;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LeaderServer extends Server{
     private BooksDatabase booksDB;
@@ -15,9 +16,12 @@ public class LeaderServer extends Server{
 
     public LeaderServer() {
         booksDB = new BooksDatabase();
-        leaderPort = 8081;
+        followersPorts = new Vector<Integer>();
+        leaderPort = new AtomicInteger();
+
+        leaderPort.set(8081);
         
-        try(ServerSocket serverSocket = new ServerSocket(leaderPort)){            
+        try(ServerSocket serverSocket = new ServerSocket(leaderPort.get())){            
             initialize("INIT;LEADER;CENTER;8081;");
             System.out.println("Leader server started on port " + leaderPort);
             while(true){
@@ -32,7 +36,6 @@ public class LeaderServer extends Server{
 
     }
 
-    @SuppressWarnings("unused")
     public void processPayload(Socket socket){
         try{
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -53,7 +56,6 @@ public class LeaderServer extends Server{
                         response = "ERROR;Invalid type";
                         break;
                     }
-                    String region = st.nextToken();
                     int port = Integer.parseInt(st.nextToken());
                     addFollower(port);
                     response = "INIT_OK;";
@@ -62,20 +64,20 @@ public class LeaderServer extends Server{
                     String book = st.nextToken();
                     booksDB.addBook(book);
                     response = "ADD_OK;";
-                    broadcastToFollowers("ADD_BOOK;" + book);
+                    //broadcastToFollowers("ADD_BOOK;" + book);
                     break;
                 case "DELETE_BOOK":
                     String bookToDelete = st.nextToken();
                     booksDB.deleteBook(bookToDelete);
                     response = "DELETE_OK;";
-                    broadcastToFollowers("DELETE_BOOK;" + bookToDelete);
+                    //broadcastToFollowers("DELETE_BOOK;" + bookToDelete);
                     break;
                 case "UPDATE BOOK":
                     String oldBook = st.nextToken();
                     String newBook = st.nextToken();
                     booksDB.updateBook(oldBook, newBook);
                     response = "UPDATE_OK;";
-                    broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
+                    //broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
                     break;
                 default:
                     response = "ERROR;Invalid operation";
@@ -108,6 +110,7 @@ public class LeaderServer extends Server{
                 System.err.println("Error broadcasting to follower on port " + port + ": " + e.getMessage());
             }
         }
+        System.out.println("Broadcasted message to followers: " + message);
     }
 
     public void addFollower(int port) {
@@ -118,7 +121,6 @@ public class LeaderServer extends Server{
     @Override
     void initialize(String initMessage) {
         super.initialize(initMessage);
-        followersPorts = new Vector<Integer>();
     }
 
     public static void main(String[] args) {

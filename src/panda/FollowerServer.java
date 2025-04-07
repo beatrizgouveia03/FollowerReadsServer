@@ -7,12 +7,14 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.StringTokenizer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FollowerServer extends Server{
     private BooksDatabase booksDB;
 
     public FollowerServer(String region, int port) {
         this.booksDB = new BooksDatabase();
+        this.leaderPort = new AtomicInteger();
         
         try(ServerSocket serverSocket = new ServerSocket(port)){
             initialize("INIT;FOLLOWER;"+region.toUpperCase()+";"+port+";");
@@ -39,17 +41,17 @@ public class FollowerServer extends Server{
             String OP = st.nextToken();
             String response = null;
             switch(OP){
+                case "HEARTBEART":
+                    response = "HEARTBEAT_OK;";
+                    break;
                 case "INIT":
                     String type = st.nextToken();
                     if (!type.equals("LEADER")) {
                         response = "ERROR;Invalid type";
                         break;
                     }
-                    this.leaderPort = Integer.parseInt(st.nextToken());
+                    this.leaderPort.set(Integer.parseInt(st.nextToken()));
                     response = "INIT_OK;";
-                    break;
-                case "HEARTBEART":
-                    response = "HEARTBEAT_OK;";
                     break;
                 case "SEARCH_BOOK":
                     int bookToSearch = Integer.parseInt(st.nextToken());

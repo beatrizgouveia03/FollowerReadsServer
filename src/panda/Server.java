@@ -1,6 +1,7 @@
 package panda;
 
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.net.Socket;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -8,7 +9,7 @@ import java.io.PrintWriter;
 import java.io.IOException;
 
 public abstract class Server {
-    protected int leaderPort;
+    protected AtomicInteger leaderPort;
     protected final int gatewayPort = 8080;
     protected final int MAX_CONNECTIONS = 300;
     protected CopyOnWriteArrayList<Integer> serverPorts;
