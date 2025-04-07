@@ -23,7 +23,7 @@ public class FollowerServer extends Server{
             while(true){
                 Socket socket = serverSocket.accept();
                 System.out.println("Connection made");
-                executor.execute(new ProcessPayload("FOLLOWER", socket, leaderPort, followerPorts, booksDB));
+                executor.execute(new ProcessPayload("FOLLOWER", port, socket, leaderPort, followerPorts, booksDB));
             }
         }   catch (IOException e) {
             System.err.println("Error starting server: " + e.getMessage());

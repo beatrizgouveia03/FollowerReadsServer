@@ -25,7 +25,7 @@ public class LeaderServer extends Server{
             while(true){
                 Socket socket = serverSocket.accept();
                 System.out.println("Connection made");
-                executor.execute(new ProcessPayload("LEADER", socket, leaderPort, followerPorts, booksDB));
+                executor.execute(new ProcessPayload("LEADER", leaderPort.get(), socket, leaderPort, followerPorts, booksDB));
             }
         }   catch (IOException e) {
             System.err.println("Error starting server: " + e.getMessage());

@@ -43,11 +43,9 @@ public class HandleRequest implements Runnable {
                 if(type.equals("LEADER") && serverPorts.size() > 0){
                     for(int server : serverPorts){
                         forwardRequest("INIT;LEADER;"+port, server);
-                        forwardRequest("INIT;FOLLOWER;"+server, port);
                     }
                 } else if(type.equals("FOLLOWER") && leaderPort.get() != 0){
                     forwardRequest("INIT;FOLLOWER;"+port, leaderPort.get());
-                    forwardRequest("INIT;LEADER;"+leaderPort.get(), port);
                 }
                 response = "INIT_OK;";
             } else if(OP.equals("ADD_BOOK")){

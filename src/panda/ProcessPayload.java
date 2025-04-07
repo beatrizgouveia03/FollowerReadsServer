@@ -11,14 +11,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProcessPayload implements Runnable{
     private Socket socket;
+    private int localPort;
     private BooksDatabase booksDB;
     private AtomicInteger leaderPort;
     private CopyOnWriteArrayList<Integer> followerPorts;
     private String serverType;
 
-    public ProcessPayload(String serverType, Socket socket, AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> followerPorts, BooksDatabase booksDB) {
+    public ProcessPayload(String serverType, int localPort, Socket socket, AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> followerPorts, BooksDatabase booksDB) {
         this.socket = socket;
         this.booksDB = booksDB;
+        this.localPort = localPort;
         this.leaderPort = leaderPort;
         this.serverType = serverType;
         this.followerPorts = followerPorts;        
@@ -42,18 +44,37 @@ public class ProcessPayload implements Runnable{
                     break;
                 case "INIT":
                     String type = st.nextToken();
+
                     if (serverType.equals("LEADER") && type.equals("FOLLOWER")) {                        
                         int port = Integer.parseInt(st.nextToken());
                         followerPorts.add(port);
-                    } else if(serverType.equals("FOLLOWER") && type.equals("LEADER")){                        
-                        leaderPort.set(Integer.parseInt(st.nextToken()));
+                        sendAliveMessage(port);
+                    } else if(serverType.equals("FOLLOWER") && type.equals("LEADER")){  
+                        int port = Integer.parseInt(st.nextToken());                      
+                        leaderPort.set(port);                        
+                        sendAliveMessage(port);                        
                     } else {
                         response = "ERROR;Invalid server type";
                         break;
-                    }
+                    }          
                     
                     response = "INIT_OK;";
                     break;
+                case "ALIVE":
+                    String type2 = st.nextToken();
+                    if (serverType.equals("LEADER") && type2.equals("FOLLOWER")) {                        
+                        int port = Integer.parseInt(st.nextToken());
+                        followerPorts.add(port);                        
+                    } else if(serverType.equals("FOLLOWER") && type2.equals("LEADER")){  
+                        int port = Integer.parseInt(st.nextToken());                      
+                        leaderPort.set(port);                                               
+                    } else {
+                        response = "ERROR;Invalid server type";
+                        break;
+                    } 
+
+                    response = "ALIVE_OK;";
+                    break;                    
                 case "ADD_BOOK":
                     if (serverType.equals("FOLLOWER")) {
                         response = "ERROR;Only leader can add books";
@@ -111,7 +132,20 @@ public class ProcessPayload implements Runnable{
 		}
     }
 
-    public void broadcastToFollowers(String message) {
+    private void sendAliveMessage(int port) {
+        try {
+            Socket socket = new Socket("localhost", port);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            out.println("ALIVE;"+serverType+";"+localPort);
+            out.flush();
+            out.close();
+            socket.close();
+        } catch (IOException e) {
+            System.err.println("Error sending alive message to follower on port " + port + ": " + e.getMessage());
+        }
+    }
+
+    private void broadcastToFollowers(String message) {
         for (int port : followerPorts) {
             try {
                 Socket socket = new Socket("localhost", port);
