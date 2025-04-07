@@ -15,9 +15,13 @@ public class APIGateway extends Server{
 
     public APIGateway(){
         System.out.println("API Gateway Started");
-        serverPorts = new CopyOnWriteArrayList<>();
+        followerPorts = new CopyOnWriteArrayList<>();
         followerRegions = new java.util.HashMap<>();
         leaderPort = new AtomicInteger();
+
+        HeartbeatMonitor monitor = new HeartbeatMonitor(leaderPort, followerPorts);
+        Thread monitorThread = new Thread(monitor);
+        monitorThread.start();
 
         try ( ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
             ServerSocket server = new ServerSocket(gatewayPort, MAX_CONNECTIONS)){			
@@ -29,7 +33,7 @@ public class APIGateway extends Server{
 
 					System.out.println("Connection made");
 
-					executor.execute(new HandleRequest(remote, leaderPort, serverPorts, followerRegions));
+					executor.execute(new HandleRequest(remote, leaderPort, followerPorts, followerRegions));
 				} catch (IOException e) {
 					System.err.println("Error handling client: " + e.getMessage());
 					e.printStackTrace();
@@ -42,22 +46,8 @@ public class APIGateway extends Server{
 		}
 	}
 
-    void addServer(int serverPort, String region){
-        serverPorts.add(serverPort);
-        followerRegions.put(serverPort, region);
-        System.out.println("Server " + serverPort + " added in region " + region);
-    }
-
-    void removeServer(int serverPort){
-        serverPorts.remove((Integer)serverPort);
-    }
-
     public static void main(String[] args){
-        APIGateway gateway = new APIGateway();
-        HeartbeatMonitor monitor = new HeartbeatMonitor(gateway);
-        Thread monitorThread = new Thread(monitor);
-        monitorThread.start();
-
+        new APIGateway();
     }
     
 }
