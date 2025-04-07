@@ -12,7 +12,7 @@ public abstract class Server {
     protected AtomicInteger leaderPort;
     protected final int gatewayPort = 8080;
     protected final int MAX_CONNECTIONS = 300;
-    protected CopyOnWriteArrayList<Integer> serverPorts;
+    protected CopyOnWriteArrayList<Integer> followerPorts;
 
     void initialize(String initMessage){
         String response = "";
@@ -36,10 +36,13 @@ public abstract class Server {
                 if(response.equals("INIT_OK;")){
                     System.out.println("Server initiated");
                     break;
+                } else if (response.isEmpty()){
+                    System.out.println("Server not initiated, retrying...");
                 }
+
             }
 
-            try { Thread.sleep(5000);}
+            try { Thread.sleep(1000);}
             catch (InterruptedException e) { 
                 e.printStackTrace();
             }
