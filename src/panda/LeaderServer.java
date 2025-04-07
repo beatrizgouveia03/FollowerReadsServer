@@ -1,121 +1,37 @@
 package panda;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.StringTokenizer;
-import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LeaderServer extends Server{
     private BooksDatabase booksDB;
-    private Vector<Integer> followersPorts;
 
     public LeaderServer() {
         booksDB = new BooksDatabase();
-        followersPorts = new Vector<Integer>();
+        followerPorts = new CopyOnWriteArrayList<Integer>();
         leaderPort = new AtomicInteger();
 
         leaderPort.set(8081);
         
-        try(ServerSocket serverSocket = new ServerSocket(leaderPort.get())){            
+        try(ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+            ServerSocket serverSocket = new ServerSocket(leaderPort.get(), MAX_CONNECTIONS)){            
             initialize("INIT;LEADER;CENTER;8081;");
             System.out.println("Leader server started on port " + leaderPort);
             while(true){
                 Socket socket = serverSocket.accept();
                 System.out.println("Connection made");
-                processPayload(socket);
+                executor.execute(new ProcessPayload("LEADER", socket, leaderPort, followerPorts, booksDB));
             }
         }   catch (IOException e) {
             System.err.println("Error starting server: " + e.getMessage());
             e.printStackTrace();
         }
 
-    }
-
-    public void processPayload(Socket socket){
-        try{
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            String request = in.readLine();
-            System.out.println("Operation received: " + request);
-
-            StringTokenizer st = new StringTokenizer(request, ";");
-            String OP = st.nextToken();
-            String response = null;
-            switch(OP){
-                case "HEARTBEART":
-                    response = "HEARTBEAT_OK;";
-                    break;
-                case "INIT":
-                    String type = st.nextToken();
-                    if (!type.equals("FOLLOWER")) {
-                        response = "ERROR;Invalid type";
-                        break;
-                    }
-                    int port = Integer.parseInt(st.nextToken());
-                    addFollower(port);
-                    response = "INIT_OK;";
-                    break;
-                case "ADD_BOOK":
-                    String book = st.nextToken();
-                    booksDB.addBook(book);
-                    response = "ADD_OK;";
-                    //broadcastToFollowers("ADD_BOOK;" + book);
-                    break;
-                case "DELETE_BOOK":
-                    String bookToDelete = st.nextToken();
-                    booksDB.deleteBook(bookToDelete);
-                    response = "DELETE_OK;";
-                    //broadcastToFollowers("DELETE_BOOK;" + bookToDelete);
-                    break;
-                case "UPDATE BOOK":
-                    String oldBook = st.nextToken();
-                    String newBook = st.nextToken();
-                    booksDB.updateBook(oldBook, newBook);
-                    response = "UPDATE_OK;";
-                    //broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
-                    break;
-                default:
-                    response = "ERROR;Invalid operation";
-                    break;
-            }
-
-            out.println(response);
-            out.flush();
-
-            in.close();
-            out.close();
-            socket.close();
-        } catch (IOException e) {
-            System.err.println("Error processing payload: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-    }
-
-    public void broadcastToFollowers(String message) {
-        for (int port : followersPorts) {
-            try {
-                Socket socket = new Socket("localhost", port);
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                out.println(message);
-                out.flush();
-                out.close();
-                socket.close();
-            } catch (IOException e) {
-                System.err.println("Error broadcasting to follower on port " + port + ": " + e.getMessage());
-            }
-        }
-        System.out.println("Broadcasted message to followers: " + message);
-    }
-
-    public void addFollower(int port) {
-        followersPorts.add(port);
-        System.out.println("Follower added on port " + port);
     }
 
     @Override

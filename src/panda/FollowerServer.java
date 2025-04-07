@@ -1,12 +1,11 @@
 package panda;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.StringTokenizer;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FollowerServer extends Server{
@@ -15,66 +14,19 @@ public class FollowerServer extends Server{
     public FollowerServer(String region, int port) {
         this.booksDB = new BooksDatabase();
         this.leaderPort = new AtomicInteger();
+        this.followerPorts = new CopyOnWriteArrayList<Integer>();
         
-        try(ServerSocket serverSocket = new ServerSocket(port)){
+        try(ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+            ServerSocket serverSocket = new ServerSocket(port, MAX_CONNECTIONS)){
             initialize("INIT;FOLLOWER;"+region.toUpperCase()+";"+port+";");
             System.out.println("Follower server started in region " + region + " on port " + port);
             while(true){
                 Socket socket = serverSocket.accept();
                 System.out.println("Connection made");
-                processPayload(socket);
+                executor.execute(new ProcessPayload("FOLLOWER", socket, leaderPort, followerPorts, booksDB));
             }
         }   catch (IOException e) {
             System.err.println("Error starting server: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void processPayload(Socket socket){
-        try{
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            String request = in.readLine();
-            System.out.println("Operation received: " + request);
-
-            StringTokenizer st = new StringTokenizer(request, ";");
-            String OP = st.nextToken();
-            String response = null;
-            switch(OP){
-                case "HEARTBEART":
-                    response = "HEARTBEAT_OK;";
-                    break;
-                case "INIT":
-                    String type = st.nextToken();
-                    if (!type.equals("LEADER")) {
-                        response = "ERROR;Invalid type";
-                        break;
-                    }
-                    this.leaderPort.set(Integer.parseInt(st.nextToken()));
-                    response = "INIT_OK;";
-                    break;
-                case "SEARCH_BOOK":
-                    int bookToSearch = Integer.parseInt(st.nextToken());
-                    String result = booksDB.getBook(bookToSearch);
-                    if (result != null) {
-                        response = "SEARCH_OK;" + result;
-                    } else {
-                        response = "SEARCH_NOT_FOUND;";
-                    }
-                    break;
-                default:
-                    response = "ERROR;Invalid operation";
-                    break;
-            }
-
-            out.println(response);
-            out.flush();
-
-            in.close();
-            out.close();
-            socket.close();
-        } catch (IOException e) {
-            System.err.println("Error processing payload: " + e.getMessage());
             e.printStackTrace();
         }
     }
