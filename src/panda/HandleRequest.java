@@ -43,15 +43,23 @@ public class HandleRequest implements Runnable {
                 if(type.equals("LEADER") && serverPorts.size() > 0){
                     for(int server : serverPorts){
                         forwardRequest("INIT;LEADER;"+port, server);
+                        forwardRequest("INIT;FOLLOWER;"+server, port);
                     }
-                } else if(type.equals("FOLLOWER")){
+                } else if(type.equals("FOLLOWER") && leaderPort.get() != 0){
                     forwardRequest("INIT;FOLLOWER;"+port, leaderPort.get());
+                    forwardRequest("INIT;LEADER;"+leaderPort.get(), port);
                 }
                 response = "INIT_OK;";
             } else if(OP.equals("ADD_BOOK")){
                 response = forwardRequest(request, leaderPort.get());
-            } else if(OP.equals("READ_BOOK")){                
-                response = forwardRequest(request, serverPorts.get(0));
+            } else if(OP.equals("DELETE_BOOK")){                
+                response = forwardRequest(request,  leaderPort.get());
+            }  else if(OP.equals("UPDATE_BOOK")){                
+                response = forwardRequest(request,  leaderPort.get());
+            } else if(OP.equals("SEARCH_BOOK")){                 
+                String region = st.nextToken(); 
+                int port = locateClosestServer(region);           
+                response = forwardRequest(request, port);
             } else {
                 System.out.println("Operation Unknown");
             }
@@ -65,6 +73,24 @@ public class HandleRequest implements Runnable {
 			} catch (IOException e) {
 				e.printStackTrace();
 		}
+    }
+
+    int locateClosestServer(String region){
+        if(serverPorts.size() == 0) {
+            if(leaderPort.get() == 0){
+                return -1;
+            }
+
+            return leaderPort.get();
+        }
+
+        for(int port : serverPorts){
+            if(followerRegions.get(port).equals(region)){
+                return port;
+            } 
+        }
+
+        return serverPorts.get(0);
     }
 
     void addServer(String type, String region, int port){
