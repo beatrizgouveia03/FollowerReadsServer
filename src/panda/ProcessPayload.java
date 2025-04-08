@@ -106,7 +106,8 @@ public class ProcessPayload implements Runnable{
                     response = "UPDATE_OK;";
                     broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
                     break;
-                case "SEARCH_BOOK":                
+                case "SEARCH_BOOK":  
+                    @SuppressWarnings("unused") String region = st.nextToken();              
                     int bookToSearch = Integer.parseInt(st.nextToken());
                     String result = booksDB.getBook(bookToSearch);
                     if (result != null) {
