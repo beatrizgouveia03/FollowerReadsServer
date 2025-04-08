@@ -25,6 +25,7 @@ public class HandleRequest implements Runnable {
 
     @Override
     public void run() {
+        System.out.println("Handling request from " + socket.getInetAddress());
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			String request = in.readLine(); 
@@ -62,13 +63,20 @@ public class HandleRequest implements Runnable {
                 System.out.println("Operation Unknown");
             }
 				
-			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println(response);
-            out.close();
+			try{
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                out.println(response);
+                out.close();
+            } catch (IOException e) {
+                System.out.println("Error sending response");
+                e.printStackTrace();
+            }
+            
+            System.out.println("Response sent: " + response);
             in.close();
             socket.close();
 				
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 		}
     }
@@ -106,14 +114,18 @@ public class HandleRequest implements Runnable {
 
     String forwardRequest(String request, int port){
         try {
+            System.out.println("Forwarding request to port " + port);
             Socket forwardSocket = new Socket("localhost", port);
             PrintWriter out = new PrintWriter(forwardSocket.getOutputStream(), true);
             out.println(request);
             out.flush();
+
             BufferedReader in = new BufferedReader(new InputStreamReader(forwardSocket.getInputStream()));
             String response = in.readLine();
             in.close();
+            out.close();
             forwardSocket.close();
+            System.out.println("Response received: " + response);
             return response;
             } catch (IOException e) {
                 System.out.println("Error forwarding request");
