@@ -1,4 +1,4 @@
-package panda;
+package panda.tcp;
 
 import java.util.Vector;
 
