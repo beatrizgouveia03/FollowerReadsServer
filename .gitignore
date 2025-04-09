@@ -23,4 +23,6 @@
 hs_err_pid*
 replay_pid*
 
-panda_v0/
+# VsCode config folders
+.vscode
+
