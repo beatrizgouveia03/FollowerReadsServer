@@ -20,7 +20,7 @@ public class LeaderServer extends Server{
         
         try(ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
             ServerSocket serverSocket = new ServerSocket(leaderPort.get(), MAX_CONNECTIONS)){            
-            initialize("INIT;LEADER;CENTER;8081;");
+            initialize("LEADER;CENTER;8081;");
             System.out.println("Leader server started on port " + leaderPort);
             while(true){
                 Socket socket = serverSocket.accept();

@@ -1,6 +1,7 @@
 package panda.http;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -28,39 +29,61 @@ public class HandleRequest implements Runnable {
         System.out.println("Handling request from " + socket.getInetAddress());
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			String request = in.readLine(); 
+			String headerLine = in.readLine(); 
             String response = null;
-			System.out.println("Operação recebida: "+request);
 			
-            StringTokenizer st = new StringTokenizer(request, ";");
-            String OP = st.nextToken();
+            StringTokenizer st = new StringTokenizer(headerLine);
+            String httpMethod = st.nextToken();
+            String inputLine;
+            StringBuilder requestBuilder = new StringBuilder();
+            while ((inputLine = in.readLine()) != null) {
+                requestBuilder.append(inputLine).append("\n");
+            }
 
-            if(OP.equals("INIT")){
-                String type = st.nextToken();
-                String region = st.nextToken();
-                int port = Integer.parseInt(st.nextToken());
-                addServer(type, region, port);
+            switch (httpMethod) {
+                case "INIT":
+                    String type = st.nextToken();
+                    String region = st.nextToken();
+                    int port = Integer.parseInt(st.nextToken());
+                    addServer(type, region, port);
 
-                if(type.equals("LEADER") && serverPorts.size() > 0){
-                    for(int server : serverPorts){
-                        forwardRequest("INIT;LEADER;"+port, server);
+                    if(type.equals("LEADER") && serverPorts.size() > 0){
+                        for(int server : serverPorts){
+                            forwardRequest("INIT;LEADER;"+port, server);
+                        }
+                    } else if(type.equals("FOLLOWER") && leaderPort.get() != 0){
+                        forwardRequest("INIT;FOLLOWER;"+port, leaderPort.get());
                     }
-                } else if(type.equals("FOLLOWER") && leaderPort.get() != 0){
-                    forwardRequest("INIT;FOLLOWER;"+port, leaderPort.get());
-                }
-                response = "INIT_OK;";
-            } else if(OP.equals("ADD_BOOK")){
-                response = forwardRequest(request, leaderPort.get());
-            } else if(OP.equals("DELETE_BOOK")){                
-                response = forwardRequest(request,  leaderPort.get());
-            }  else if(OP.equals("UPDATE_BOOK")){                
-                response = forwardRequest(request,  leaderPort.get());
-            } else if(OP.equals("SEARCH_BOOK")){                 
-                String region = st.nextToken(); 
-                int port = locateClosestServer(region);           
-                response = forwardRequest(request, port);
-            } else {
-                System.out.println("Operation Unknown");
+                    sendResponse(200, "Server added successfully");
+                    in.close();
+                    socket.close();
+                    return;
+                case "DELETE":
+                    response = forwardRequest(requestBuilder.toString(), leaderPort.get());
+                    break;
+                case "POST":
+                    response = forwardRequest(requestBuilder.toString(), leaderPort.get());
+                    break;
+                case "PUT":
+                    response = forwardRequest(requestBuilder.toString(), leaderPort.get());
+                    break;
+                case "GET":
+                    String regionToGet = st.nextToken();
+                    int closestServerPort = locateClosestServer(regionToGet);
+                    if(closestServerPort == -1){
+                        sendResponse(500, "No server available");
+                        in.close();
+                        socket.close();
+                        return;
+                    }
+                    response = forwardRequest(requestBuilder.toString(), closestServerPort);
+                    break;            
+                default:
+                    System.out.println("Operation Unknown");
+                    sendResponse(405, "Method Not Allowed");
+                    in.close();
+                    socket.close();
+                    return;
             }
 				
 			try{
@@ -72,7 +95,6 @@ public class HandleRequest implements Runnable {
                 e.printStackTrace();
             }
             
-            System.out.println("Response sent: " + response);
             in.close();
             socket.close();
 				
@@ -81,7 +103,35 @@ public class HandleRequest implements Runnable {
 		}
     }
 
-    int locateClosestServer(String region){
+    private void sendResponse(int statusCode, String message) {
+        String statusLine;
+        try {
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            if(statusCode == 405){
+                statusLine = "HTTP/1.0 405 Method Not Allowed\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("\r\n");
+            } else if(statusCode == 200){
+                statusLine = "HTTP/1.0 200 OK\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("Content-Type: text/plain\r\n");
+                out.writeBytes("Content-Length: " + message.length() + "\r\n");
+                out.writeBytes("\r\n");
+                out.writeBytes(message);
+            } else {
+                statusLine = "HTTP/1.0 500 Internal Server Error\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("\r\n");
+            }
+
+            out.close();
+        } catch (IOException e) {
+            System.out.println("Error sending error response");
+            e.printStackTrace();
+        }
+    }
+
+    private int locateClosestServer(String region){
         if(serverPorts.size() == 0) {
             if(leaderPort.get() == 0){
                 return -1;
@@ -99,7 +149,7 @@ public class HandleRequest implements Runnable {
         return serverPorts.get(0);
     }
 
-    void addServer(String type, String region, int port){
+    private void addServer(String type, String region, int port){
         if(type.equals("FOLLOWER")){
             serverPorts.add(port);
             followerRegions.put(port, region);
@@ -112,7 +162,7 @@ public class HandleRequest implements Runnable {
         }
     }
 
-    String forwardRequest(String request, int port){
+    private String forwardRequest(String request, int port){
         try {
             System.out.println("Forwarding request to port " + port);
             Socket forwardSocket = new Socket("localhost", port);

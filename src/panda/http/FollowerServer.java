@@ -1,4 +1,4 @@
-package panda.tcp;
+package panda.http;
 
 import java.io.IOException;
 import java.net.ServerSocket;

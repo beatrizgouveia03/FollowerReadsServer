@@ -1,8 +1,10 @@
 package panda.http;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.StringTokenizer;
@@ -30,19 +32,21 @@ public class ProcessPayload implements Runnable{
     public void run() {
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			String request = in.readLine(); 
-            String response = null;
-			System.out.println("Operação recebida: "+request);
-			
+			String headerLine = in.readLine(); 
+            String request = null;
            
-            StringTokenizer st = new StringTokenizer(request, ";");
-            String OP = st.nextToken();
+            StringTokenizer st = new StringTokenizer(headerLine);
+            String httpMethod = st.nextToken();
+            in.readLine();
 
-            switch(OP){
+            switch(httpMethod){
                 case "HEARTBEAT":
-                    response = "HEARTBEAT_OK;";
+                    sendResponse(200, "Heartbeat received");                   
                     break;
-                case "INIT":
+                case "INIT":                
+                    String body = in.readLine();
+                    request = body;
+                    st = new StringTokenizer(request, ";");
                     String type = st.nextToken();
 
                     if (serverType.equals("LEADER") && type.equals("FOLLOWER")) {                        
@@ -54,13 +58,16 @@ public class ProcessPayload implements Runnable{
                         leaderPort.set(port);                        
                         sendAliveMessage(port);                        
                     } else {
-                        response = "ERROR;Invalid server type";
+                        sendResponse(500, "Invalid server type");
                         break;
                     }          
                     
-                    response = "INIT_OK;";
+                    sendResponse(200, "Server added successfully");
                     break;
                 case "ALIVE":
+                    String body2 = in.readLine();
+                    request = body2;
+                    st = new StringTokenizer(request, ";");
                     String type2 = st.nextToken();
                     if (serverType.equals("LEADER") && type2.equals("FOLLOWER")) {                        
                         int port = Integer.parseInt(st.nextToken());
@@ -69,62 +76,51 @@ public class ProcessPayload implements Runnable{
                         int port = Integer.parseInt(st.nextToken());                      
                         leaderPort.set(port);                                               
                     } else {
-                        response = "ERROR;Invalid server type";
+                        sendResponse(500, "Invalid server type");
                         break;
                     } 
 
-                    response = "ALIVE_OK;";
+                    sendResponse(200, "Server added successfully");
                     break;                    
-                case "ADD_BOOK":
+                case "DELETE":
                     if (serverType.equals("FOLLOWER")) {
-                        response = "ERROR;Only leader can add books";
+                        sendResponse(450, "ERROR;Only leader can delete books");
                         break;
                     }
-                    String book = st.nextToken();
-                    booksDB.addBook(book);
-                    response = "ADD_OK;";
-                    broadcastToFollowers("ADD_BOOK;" + book);
+                    sendResponse(200, "Book deleted");
+                    broadcastToFollowers(request);
                     break;
-                case "DELETE_BOOK":
+                case "POST":
                     if (serverType.equals("FOLLOWER")) {
-                        response = "ERROR;Only leader can delete books";
+                        sendResponse(450, "ERROR;Only leader can add books");
                         break;
                     }
-                    String bookToDelete = st.nextToken();
-                    booksDB.deleteBook(bookToDelete);
-                    response = "DELETE_OK;";
-                    broadcastToFollowers("DELETE_BOOK;" + bookToDelete);
+                    sendResponse(200, "Book added");
+                    broadcastToFollowers(request);
                     break;
-                case "UPDATE BOOK":
+                case "PUT":
                     if (serverType.equals("FOLLOWER")) {
-                        response = "ERROR;Only leader can update books";
+                        sendResponse(450, "ERROR;Only leader can update books");
                         break;
                     }
-                    String oldBook = st.nextToken();
-                    String newBook = st.nextToken();
-                    booksDB.updateBook(oldBook, newBook);
-                    response = "UPDATE_OK;";
-                    broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
+                    sendResponse(200, "Book updated");
+                    broadcastToFollowers(request);
                     break;
-                case "SEARCH_BOOK":  
+                case "GET":  
                     @SuppressWarnings("unused") String region = st.nextToken();              
-                    int bookToSearch = Integer.parseInt(st.nextToken());
-                    String result = booksDB.getBook(bookToSearch);
-                    if (result != null) {
-                        response = "SEARCH_OK;" + result;
+                    String bookToSearch = st.nextToken();
+                    int result = booksDB.getBookCopies(bookToSearch);
+                    if (result != -1) {
+                        sendResponse(200, "Book found: " + bookToSearch + " with " + result + " copies");
                     } else {
-                        response = "SEARCH_NOT_FOUND;";
+                        sendResponse(200, "Book not found: " + bookToSearch);
                     }
                     break;
                 default:
-                    response = "ERROR;Invalid operation";
+                    sendResponse(405, "Method Not Allowed");
                     break;
             }
 
-				
-			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println(response);
-            out.close();
             in.close();
             socket.close();
 				
@@ -133,11 +129,46 @@ public class ProcessPayload implements Runnable{
 		}
     }
 
-    private void sendAliveMessage(int port) {
+    private void sendResponse(int statusCode, String message) {
+        String statusLine;
         try {
-            Socket socket = new Socket("localhost", port);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println("ALIVE;"+serverType+";"+localPort);
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            if(statusCode == 405){
+                statusLine = "HTTP/1.0 405 Method Not Allowed\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("\r\n");
+            } else if(statusCode == 200){
+                statusLine = "HTTP/1.0 200 OK\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("Content-Type: text/plain\r\n");
+                out.writeBytes("Content-Length: " + message.length() + "\r\n");
+                out.writeBytes("\r\n");
+                out.writeBytes(message);
+            } else {
+                statusLine = "HTTP/1.0 500 Internal Server Error\r\n";
+                out.writeBytes(statusLine);
+                out.writeBytes("\r\n");
+            }
+
+            out.close();
+        } catch (IOException e) {
+            System.out.println("Error sending error response");
+            e.printStackTrace();
+        }
+    }
+
+    private void sendAliveMessage(int port) {
+        try ( Socket socket = new Socket("localhost", port);
+        OutputStream out = socket.getOutputStream();
+        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        ){           
+            String request = serverType+";"+localPort;
+            out.write("ALIVE /default\r\n".getBytes());
+            out.write("User-Agent: Mozilla/5.0\r\n".getBytes());
+            out.write("Content-Type: text/plain\r\n".getBytes());
+            out.write(("Content-Length: " + request.length() + "\r\n").getBytes());
+            out.write("\r\n".getBytes());
+            out.write(request.getBytes());
             out.flush();
             out.close();
             socket.close();
