@@ -30,7 +30,7 @@ public class HandleRequest implements Runnable {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			String request = in.readLine(); 
             String response = null;
-			System.out.println("Operação recebida: "+request);
+			System.out.println("Operation received: "+request);
 			
             StringTokenizer st = new StringTokenizer(request, ";");
             String OP = st.nextToken();
@@ -53,7 +53,7 @@ public class HandleRequest implements Runnable {
                 response = forwardRequest(request, leaderPort.get());
             } else if(OP.equals("DELETE_BOOK")){                
                 response = forwardRequest(request,  leaderPort.get());
-            }  else if(OP.equals("UPDATE_BOOK")){                
+            }  else if(OP.equals("ADD_COPY")){                
                 response = forwardRequest(request,  leaderPort.get());
             } else if(OP.equals("SEARCH_BOOK")){                 
                 String region = st.nextToken(); 

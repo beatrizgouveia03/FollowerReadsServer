@@ -81,7 +81,7 @@ public class ProcessPayload implements Runnable{
                         break;
                     }
                     String book = st.nextToken();
-                    booksDB.addBook(book);
+                    booksDB.addNewBook(book);
                     response = "ADD_OK;";
                     broadcastToFollowers("ADD_BOOK;" + book);
                     break;
@@ -95,22 +95,21 @@ public class ProcessPayload implements Runnable{
                     response = "DELETE_OK;";
                     broadcastToFollowers("DELETE_BOOK;" + bookToDelete);
                     break;
-                case "UPDATE BOOK":
+                case "ADD_COPY":
                     if (serverType.equals("FOLLOWER")) {
                         response = "ERROR;Only leader can update books";
                         break;
                     }
-                    String oldBook = st.nextToken();
-                    String newBook = st.nextToken();
-                    booksDB.updateBook(oldBook, newBook);
-                    response = "UPDATE_OK;";
-                    broadcastToFollowers("UPDATE_BOOK;" + oldBook + ";" + newBook);
+                    String book2 = st.nextToken();
+                    booksDB.addNewCopy(book2);
+                    response = "ADD_COPY_OK;";
+                    broadcastToFollowers("ADD_COPY;" + book2);
                     break;
                 case "SEARCH_BOOK":  
                     @SuppressWarnings("unused") String region = st.nextToken();              
-                    int bookToSearch = Integer.parseInt(st.nextToken());
-                    String result = booksDB.getBook(bookToSearch);
-                    if (result != null) {
+                    String bookToSearch = st.nextToken();
+                    int result = booksDB.getBookCopies(bookToSearch);
+                    if (result != -1) {
                         response = "SEARCH_OK;" + result;
                     } else {
                         response = "SEARCH_NOT_FOUND;";
