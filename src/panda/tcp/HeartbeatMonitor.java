@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -12,13 +13,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class HeartbeatMonitor implements Runnable{
     private AtomicInteger leaderPort;
     private CopyOnWriteArrayList<Integer> serverPorts;
+    private ConcurrentHashMap<Integer, String> followerRegions;
 
-    private final int HEARTBEAT_INTERVAL = 5000;
+    private final int HEARTBEAT_INTERVAL = 10000;
 
-    public HeartbeatMonitor(AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> serverPorts) {
+    public HeartbeatMonitor(AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> serverPorts, ConcurrentHashMap<Integer, String> followerRegions) {
         this.leaderPort = leaderPort; 
-        this.serverPorts = serverPorts;}
-
+        this.serverPorts = serverPorts;
+        this.followerRegions = followerRegions;
+    }
+        
     @Override
     public void run() {
         while (true) {             
@@ -53,6 +57,7 @@ public class HeartbeatMonitor implements Runnable{
         String response = "";
         try{
             Socket socket = new Socket("localhost", port);
+            socket.setSoTimeout(5000);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             out.println("HEARTBEAT;");
             out.flush();
@@ -75,6 +80,7 @@ public class HeartbeatMonitor implements Runnable{
                 leaderPort.set(0);
             } else {
                 serverPorts.remove(Integer.valueOf(port));
+                followerRegions.remove(port);
                 System.out.println("Server " + port + " is down. Removing from list.");
             }
         } finally{
