@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,9 +14,9 @@ public class HandleRequest implements Runnable {
     private Socket socket;
     private AtomicInteger leaderPort;
     private CopyOnWriteArrayList<Integer> serverPorts;
-    private HashMap<Integer, String> followerRegions;
+    private ConcurrentHashMap<Integer, String> followerRegions;
 
-    public HandleRequest(Socket socket, AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> serverPorts, HashMap<Integer, String> followerRegions) {
+    public HandleRequest(Socket socket, AtomicInteger leaderPort, CopyOnWriteArrayList<Integer> serverPorts, ConcurrentHashMap<Integer, String> followerRegions) {
         this.socket = socket;
         this.leaderPort = leaderPort;
         this.serverPorts = serverPorts;        
@@ -116,6 +116,8 @@ public class HandleRequest implements Runnable {
         try {
             System.out.println("Forwarding request to port " + port);
             Socket forwardSocket = new Socket("localhost", port);
+            forwardSocket.setSoTimeout(5000);
+
             PrintWriter out = new PrintWriter(forwardSocket.getOutputStream(), true);
             out.println(request);
             out.flush();

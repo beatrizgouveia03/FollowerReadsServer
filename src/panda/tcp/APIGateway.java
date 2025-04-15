@@ -3,7 +3,7 @@ package panda.tcp;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -11,15 +11,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class APIGateway extends Server{
-    private HashMap<Integer, String> followerRegions;
+    private ConcurrentHashMap<Integer, String> followerRegions;
 
     public APIGateway(){
         System.out.println("API Gateway Started");
         followerPorts = new CopyOnWriteArrayList<>();
-        followerRegions = new java.util.HashMap<>();
+        followerRegions = new ConcurrentHashMap<>();
         leaderPort = new AtomicInteger();
 
-        HeartbeatMonitor monitor = new HeartbeatMonitor(leaderPort, followerPorts);
+        HeartbeatMonitor monitor = new HeartbeatMonitor(leaderPort, followerPorts, followerRegions);
         Thread monitorThread = new Thread(monitor);
         monitorThread.start();
 
@@ -30,6 +30,8 @@ public class APIGateway extends Server{
 					System.out.println("Waiting for client request " + server.getInetAddress());
 
 					Socket remote = server.accept();
+
+					remote.setSoTimeout(5000);
 
 					System.out.println("Connection made");
 
